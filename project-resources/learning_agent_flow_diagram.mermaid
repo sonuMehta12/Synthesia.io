@@ -1,0 +1,122 @@
+graph TB
+    %% Entry Points
+    UserCommand[👤 User Command] --> TriggerRouter
+    ScheduledTask[⏰ Scheduled Task] --> TriggerRouter
+    
+    %% State Management Layer
+    TriggerRouter[🎯 Trigger Router] --> StateManager
+    StateManager[📊 State Manager<br/>- User Profile<br/>- Knowledge Graph<br/>- Active Sessions] --> IntentClassifier
+    
+    %% Intent Processing
+    IntentClassifier[🧠 Intent Classifier<br/>- Learning Request<br/>- Knowledge Addition<br/>- Summary Generation<br/>- Profile Update] --> RouterGate{Route Decision}
+    
+    %% Learning Flow Path
+    RouterGate -->|Learning Request| LearningOrchestrator
+    LearningOrchestrator[🎓 Learning Orchestrator] --> ContextRetriever
+    ContextRetriever[📚 Context Retriever<br/>- User Profile Slice<br/>- Relevant Knowledge<br/>- Recent Activities] --> PreResearchValidator
+    
+    PreResearchValidator[✅ Pre-Research Validator<br/>- Topic Complexity Check<br/>- Resource Requirements<br/>- Time Estimation] --> ResearchCoordinator
+    
+    %% Multi-Agent Research Layer
+    ResearchCoordinator[🔬 Research Coordinator] --> ParallelResearch
+    subgraph ParallelResearch["🚀 Parallel Research Agents"]
+        AcademicAgent[📖 Academic Agent<br/>Papers, Books, Courses]
+        ExpertAgent[👨‍🏫 Expert Agent<br/>Thought Leaders, Authors]
+        PracticalAgent[🔧 Practical Agent<br/>Projects, Tools, Tutorials]
+        CommunityAgent[🌐 Community Agent<br/>Forums, Discord, Reddit]
+        NewsAgent[📰 News Agent<br/>Latest Developments]
+    end
+    
+    %% Research Synthesis
+    ParallelResearch --> ResearchSynthesizer
+    ResearchSynthesizer[⚡ Research Synthesizer<br/>- Deduplication<br/>- Quality Scoring<br/>- Relevance Filtering] --> QualityGate
+    
+    QualityGate[🛡️ Quality Gate<br/>- Completeness Check<br/>- Source Credibility<br/>- Bias Detection] --> RoadmapGenerator
+    
+    %% Roadmap Creation Flow
+    RoadmapGenerator[🗺️ Roadmap Generator] --> UserCollaborator
+    UserCollaborator[🤝 User Collaborator<br/>- Present Draft<br/>- Collect Feedback<br/>- Iterate Design] --> RoadmapApproval{User Approved?}
+    
+    RoadmapApproval -->|No| UserCollaborator
+    RoadmapApproval -->|Yes| BookWriter
+    
+    %% Content Generation
+    BookWriter[📝 Book Writer<br/>- Structured Content<br/>- Markdown Formatting<br/>- Interactive Elements] --> ContentValidator
+    ContentValidator[✅ Content Validator<br/>- Accuracy Check<br/>- Coherence Review<br/>- Format Validation] --> DeliveryManager
+    
+    %% Daily Summary Flow Path
+    RouterGate -->|Summary Generation| SummaryOrchestrator
+    SummaryOrchestrator[📋 Summary Orchestrator] --> ContentAggregator
+    
+    subgraph ContentAggregator["📡 Content Aggregation Layer"]
+        EmailMonitor[📧 Email Monitor<br/>Newsletter Processing]
+        LinkedInMonitor[💼 LinkedIn Monitor<br/>Feed Analysis]
+        YouTubeMonitor[📺 YouTube Monitor<br/>Video Summaries]
+        SubstackMonitor[📝 Substack Monitor<br/>Article Processing]
+    end
+    
+    ContentAggregator --> NoiseFilter
+    NoiseFilter[🔍 Noise Filter<br/>- Relevance Scoring<br/>- Duplicate Removal<br/>- User Interest Matching] --> SummaryGenerator
+    
+    SummaryGenerator[📊 Summary Generator<br/>- Key Insights<br/>- Action Items<br/>- Learning Opportunities] --> MergeProposer
+    
+    MergeProposer[🔗 Merge Proposer<br/>- Identify Integration Points<br/>- Suggest Knowledge Updates<br/>- Recommend New Topics] --> SummaryDelivery
+    
+    %% Knowledge Addition Flow
+    RouterGate -->|Knowledge Addition| KnowledgeProcessor
+    KnowledgeProcessor[🧩 Knowledge Processor<br/>- Content Analysis<br/>- Topic Classification<br/>- Integration Strategy] --> KnowledgeValidator
+    
+    KnowledgeValidator[✅ Knowledge Validator<br/>- Accuracy Verification<br/>- Redundancy Check<br/>- Quality Assessment] --> KnowledgeIntegrator
+    
+    KnowledgeIntegrator[🔧 Knowledge Integrator<br/>- Update Existing Books<br/>- Create New Sections<br/>- Maintain References] --> KnowledgeGraph
+    
+    %% Central Knowledge Store
+    KnowledgeGraph[🕸️ Knowledge Graph<br/>- Topic Relationships<br/>- Mastery Levels<br/>- Source Tracking<br/>- Version Control]
+    
+    %% Delivery and Feedback
+    DeliveryManager[📤 Delivery Manager] --> UserInterface
+    SummaryDelivery[📤 Summary Delivery] --> UserInterface
+    UserInterface[💻 User Interface<br/>- Markdown Viewer<br/>- Feedback Collection<br/>- Progress Tracking] --> FeedbackProcessor
+    
+    FeedbackProcessor[🔄 Feedback Processor<br/>- Performance Analysis<br/>- System Optimization<br/>- Profile Updates] --> StateManager
+    
+    %% Error Handling and Recovery
+    subgraph ErrorHandling["🚨 Error Handling Layer"]
+        ErrorDetector[⚠️ Error Detector]
+        FallbackManager[🔄 Fallback Manager]
+        RetryOrchestrator[🔁 Retry Orchestrator]
+    end
+    
+    %% External Integrations
+    subgraph ExternalAPIs["🌐 External APIs"]
+        SearchAPIs[🔍 Search APIs<br/>Google, Bing, Academic]
+        SocialAPIs[📱 Social Media APIs<br/>LinkedIn, YouTube, X]
+        EmailAPIs[📧 Email APIs<br/>Gmail, Outlook]
+        DatabaseAPIs[💾 Vector Databases<br/>Pinecone, Weaviate]
+    end
+    
+    %% Connect error handling
+    ResearchCoordinator -.-> ErrorDetector
+    BookWriter -.-> ErrorDetector
+    SummaryGenerator -.-> ErrorDetector
+    
+    %% Connect external APIs
+    ParallelResearch -.-> SearchAPIs
+    ContentAggregator -.-> SocialAPIs
+    ContentAggregator -.-> EmailAPIs
+    KnowledgeGraph -.-> DatabaseAPIs
+    
+    %% Styling
+    classDef userNode fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef orchestrator fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef agent fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef validator fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef storage fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef external fill:#f1f8e9,stroke:#33691e,stroke-width:2px
+    
+    class UserCommand,UserInterface userNode
+    class LearningOrchestrator,SummaryOrchestrator,ResearchCoordinator orchestrator
+    class AcademicAgent,ExpertAgent,PracticalAgent,CommunityAgent,NewsAgent agent
+    class PreResearchValidator,QualityGate,ContentValidator,KnowledgeValidator validator
+    class StateManager,KnowledgeGraph storage
+    class ExternalAPIs,SearchAPIs,SocialAPIs,EmailAPIs,DatabaseAPIs external
