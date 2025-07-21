@@ -72,6 +72,13 @@ class AgentState(TypedDict):
     current_topic: Optional[str]
     learning_context: Dict[str, Any]
     
+    # New fields for this phase
+    context: Optional[Dict[str, Any]]
+    toc: Optional[List[Dict[str, Any]]]
+    summaries: Optional[Dict[str, str]]
+    user_feedback: Optional[str]
+    book_content: Optional[str]
+    
     # System metadata
     session_id: Optional[str]
     timestamp: str 

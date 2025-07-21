@@ -11,7 +11,6 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 
 from langchain_openai import ChatOpenAI
-from langchain_anthropic import ChatAnthropic
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
@@ -54,34 +53,19 @@ class IntentClassifier:
         
         logger.info(f"Intent Classifier initialized with model: {self.config['model_name']}")
     
-    def _initialize_llm(self) -> ChatOpenAI | ChatAnthropic:
+    def _initialize_llm(self) -> ChatOpenAI:
         """
-        Initialize the LLM based on configuration.
+        Initialize the LLM based on configuration (OpenAI only).
         
         Returns:
             Configured LLM instance.
         """
         model_name = self.config["model_name"]
-        
-        if "gpt" in model_name.lower():
-            return ChatOpenAI(
-                model=model_name,
-                temperature=self.config["temperature"],
-                max_tokens=self.config["max_tokens"],
-            )
-        elif "claude" in model_name.lower():
-            return ChatAnthropic(
-                model=model_name,
-                temperature=self.config["temperature"],
-                max_tokens=self.config["max_tokens"],
-            )
-        else:
-            # Default to OpenAI
-            return ChatOpenAI(
-                model="gpt-4o-mini",
-                temperature=self.config["temperature"],
-                max_tokens=self.config["max_tokens"],
-            )
+        return ChatOpenAI(
+            model=model_name,
+            temperature=self.config["temperature"],
+            max_tokens=self.config["max_tokens"],
+        )
     
     def _create_classification_chain(self):
         """Create the intent classification chain."""

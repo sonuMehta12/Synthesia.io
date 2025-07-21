@@ -13,12 +13,23 @@ graph TD
     B --> C[Initial Research Node]
     C --> D[Draft Table of Contents + Summaries]
     D --> E[User Approval/Collaboration]
-    E --> F{User Approved?}
-    F -- No --> D
-    F -- Yes --> G[Routing Decision]
-    G --> H[Specialized Deep Research Agents]
-    H --> I[Output Generation & Book Writing]
+    E --> F[Deep Research Node (LLM Placeholder)]
+    F --> G[Output Generation & Book Writing]
 ```
+
+---
+
+## 2.1 Current Implementation (Post-Intent Classification)
+
+After intent classification, the following nodes are implemented in sequence:
+
+1. **ContextAssembler**: Assembles user profile, preferences, topic, existing book summaries, and user resources into a context object. Uses mock data for now.
+2. **InitialResearchNode**: Generates a draft Table of Contents (ToC) and short summaries for the requested topic using a simple prompt. Returns dummy data for now.
+3. **UserCollabInterface**: Presents the draft ToC and summaries to the user, collects a single round of feedback (simulated approval in the current implementation).
+4. **DummyDeepResearchNode**: Placeholder for future deep research logic. Currently, it simply echoes the ToC and summaries as book content using the LLM only.
+5. **Output Generation**: Assembles the final book in Markdown format and returns it to the user.
+
+**Note:** There is no routing loop after user feedback; only a single round of feedback is allowed before proceeding to deep research. The deep research node is a placeholder and will be replaced with advanced research logic in the future.
 
 ---
 
@@ -53,16 +64,13 @@ graph TD
   - The user can provide feedback or suggestions **once** (not a loop).
   - After this single round, the LLM proceeds to the next step.
 
-### 3.5 Routing Decision
-- If user approves, proceed to deep research.
-- If not, allow one round of feedback and then proceed.
-
-### 3.6 Specialized Deep Research Agents
+### 3.5 Deep Research Node (Dummy)
 - **For Now:**
-  - Implement as a dummy node using only the LLM (no MCP servers, no advanced search tools yet).
+  - Implemented as a dummy node using only the LLM (no MCP servers, no advanced search tools yet).
   - The architecture is designed for future expansion to use advanced research tools, agents, and internet search.
+  - Simply echoes the ToC and summaries as book content.
 
-### 3.7 Output Generation
+### 3.6 Output Generation
 - Assemble research results into structured book format (Markdown).
 - Summarize, format, and attribute sources.
 - Save/update book in user’s knowledge base.
@@ -122,13 +130,9 @@ graph TD
     B --> C[ContextAssembler]
     C --> D[Initial Research Node]
     D --> E[UserCollabInterface]
-    E --> F{Approved?}
-    F -- No --> D
-    F -- Yes --> G[ResearchCoordinator]
-    G --> H[SpecializedAgents]
-    H --> I[BookStateManager]
-    I --> J[Output Generation]
-    J --> K[User]
+    E --> F[DummyDeepResearchNode]
+    F --> G[Output Generation]
+    G --> H[User]
 ```
 
 ---

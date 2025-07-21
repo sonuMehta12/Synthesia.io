@@ -16,6 +16,15 @@ from ..utils.config import config
 
 logger = logging.getLogger(__name__)
 
+# Mock data for simulation (should match ContextAssembler)
+MOCK_USER_PROFILE = {
+    "user_id": "user_123",
+    "name": "Alice",
+    "learning_style": "visual",
+    "content_preferences": {"format": "markdown", "depth": "comprehensive"},
+    "created_at": "2024-01-01T00:00:00",
+    "updated_at": "2024-01-01T00:00:00",
+}
 
 class StateManager:
     """
@@ -41,22 +50,8 @@ class StateManager:
         Returns:
             UserProfile with user information and preferences.
         """
-        # TODO: Implement database integration
-        # For now, return a default profile
-        return UserProfile(
-            user_id=user_id,
-            name=None,
-            learning_style="comprehensive",  # Default learning style
-            content_preferences={
-                "format": "markdown",
-                "depth": "comprehensive",
-                "include_examples": True,
-                "include_exercises": True,
-                "include_resources": True,
-            },
-            created_at=datetime.now().isoformat(),
-            updated_at=datetime.now().isoformat(),
-        )
+        # For now, return mock profile
+        return MOCK_USER_PROFILE.copy()
     
     def create_book_request(self, user_id: str, user_query: str, intent: IntentType, topic: Optional[str] = None) -> BookRequest:
         """
@@ -120,17 +115,12 @@ class StateManager:
             Updated agent state with user context and book request info.
         """
         try:
-            # Extract user ID from state or generate one
-            user_id = state.get("user_profile", {}).get("user_id")
-            if not user_id:
-                user_id = str(uuid.uuid4())
-                self.logger.info(f"Generated new user ID: {user_id}")
-            
-            # Load or create user profile
+            # Use mock user profile if not present
             user_profile = state.get("user_profile")
             if not user_profile:
-                user_profile = self.load_user_context(user_id)
-                self.logger.info(f"Loaded user profile for {user_id}")
+                user_profile = MOCK_USER_PROFILE.copy()
+                self.logger.info("Using mock user profile.")
+            user_id = user_profile.get("user_id", "user_123")
             
             # Create book request if intent is available
             current_request = state.get("current_request")

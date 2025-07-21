@@ -17,6 +17,10 @@ from .models.state import AgentState
 from .agents.intent_classifier import IntentClassifier
 from .agents.state_manager import StateManager
 from .utils.config import config
+from .agents.context_assembler import ContextAssembler
+from .agents.initial_research_node import InitialResearchNode
+from .agents.user_collab_interface import UserCollabInterface
+from .agents.dummy_deep_research_node import DummyDeepResearchNode
 
 # Configure logging
 logging.basicConfig(
@@ -38,6 +42,10 @@ class LearningAgent:
         """Initialize the Learning Agent."""
         self.intent_classifier = IntentClassifier()
         self.state_manager = StateManager()
+        self.context_assembler = ContextAssembler()
+        self.initial_research_node = InitialResearchNode()
+        self.user_collab_interface = UserCollabInterface()
+        self.dummy_deep_research_node = DummyDeepResearchNode()
         self.graph = self._build_graph()
         
         logger.info("Learning Agent initialized successfully")
@@ -55,11 +63,19 @@ class LearningAgent:
         # Add nodes to the graph
         builder.add_node("state_manager", self.state_manager.manage_state)
         builder.add_node("intent_classifier", self.intent_classifier.classify_with_state)
+        builder.add_node("context_assembler", self._context_assembler_node)
+        builder.add_node("initial_research_node", self._initial_research_node)
+        builder.add_node("user_collab_interface", self._user_collab_interface_node)
+        builder.add_node("dummy_deep_research_node", self._dummy_deep_research_node)
         
         # Define the workflow edges
         builder.add_edge(START, "state_manager")
         builder.add_edge("state_manager", "intent_classifier")
-        builder.add_edge("intent_classifier", END)
+        builder.add_edge("intent_classifier", "context_assembler")
+        builder.add_edge("context_assembler", "initial_research_node")
+        builder.add_edge("initial_research_node", "user_collab_interface")
+        builder.add_edge("user_collab_interface", "dummy_deep_research_node")
+        builder.add_edge("dummy_deep_research_node", END)
         
         # Compile the graph with memory saver for state persistence
         memory = MemorySaver()
@@ -67,6 +83,41 @@ class LearningAgent:
         
         logger.info("LangGraph workflow built successfully")
         return graph
+
+    def _context_assembler_node(self, state: AgentState) -> AgentState:
+        # Use mock data for now
+        context = self.context_assembler.assemble_context(
+            user_profile=state.get("user_profile"),
+            intent_result=state.get("current_intent"),
+            existing_books=None,  # Use mock inside assembler
+            user_resources=None,  # Use mock inside assembler
+        )
+        return {**state, "context": context}
+
+    def _initial_research_node(self, state: AgentState) -> AgentState:
+        context = state.get("context")
+        topic = state.get("current_topic")
+        result = self.initial_research_node.generate_toc(context, topic)
+        return {**state, "toc": result["toc"], "summaries": result["summaries"]}
+
+    def _user_collab_interface_node(self, state: AgentState) -> AgentState:
+        toc = state.get("toc")
+        summaries = state.get("summaries")
+        user_profile = state.get("user_profile")
+        feedback_result = self.user_collab_interface.present_and_collect_feedback(toc, summaries, user_profile)
+        return {
+            **state,
+            "toc": feedback_result["updated_toc"],
+            "summaries": feedback_result["updated_summaries"],
+            "user_feedback": feedback_result["user_feedback"],
+        }
+
+    def _dummy_deep_research_node(self, state: AgentState) -> AgentState:
+        toc = state.get("toc")
+        summaries = state.get("summaries")
+        context = state.get("context")
+        result = self.dummy_deep_research_node.generate_content(toc, summaries, context)
+        return {**state, "book_content": result["book_content"]}
     
     def process_user_input(self, user_input: str, config: Dict[str, Any] = None) -> Dict[str, Any]:
         """
@@ -84,12 +135,18 @@ class LearningAgent:
             initial_state = {
                 "messages": [HumanMessage(content=user_input)],
                 "user_profile": None,
-                "knowledge_state": None,
+                "current_request": None,
+                "generated_book": None,
                 "current_intent": None,
                 "current_topic": None,
                 "learning_context": {},
                 "session_id": None,
                 "timestamp": None,
+                "context": None,
+                "toc": None,
+                "summaries": None,
+                "user_feedback": None,
+                "book_content": None,
             }
             
             # Execute the graph
@@ -106,6 +163,10 @@ class LearningAgent:
                 "topic": result.get("current_topic"),
                 "session_id": result.get("session_id"),
                 "timestamp": result.get("timestamp"),
+                "toc": result.get("toc"),
+                "summaries": result.get("summaries"),
+                "user_feedback": result.get("user_feedback"),
+                "book_content": result.get("book_content"),
                 "full_state": result,
             }
             
