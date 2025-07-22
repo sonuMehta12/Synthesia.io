@@ -11,7 +11,6 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
 from ..prompts.initial_research import PERSONALIZED_TOC_PROMPT
-from ..models.persona import get_hardcoded_sonu_persona
 from ..models.state import PersonalizedBookStructure, BookChapter
 from ..utils.config import config
 
@@ -48,21 +47,26 @@ class InitialResearchNode:
         """
         Generate a personalized Table of Contents for the given topic.
         
+        UPDATED: Now uses assembled context from ContextAssembler instead of hardcoded persona.
+        This ensures all nodes use centralized context and supports scalable architecture.
+        
         Args:
-            context: User context including profile and preferences
-            topic: The topic to create a book about
+            context: Assembled context from ContextAssembler containing user_profile, 
+                    existing_knowledge, topic_context, and other centralized data
+            topic: The topic to create a book about (fallback if topic_context not available)
             
         Returns:
             Dictionary containing the structured book data
         """
         try:
-            # Get persona data
-            persona = get_hardcoded_sonu_persona()
+            # UPDATED: Extract data from assembled context instead of hardcoded persona
+            # This allows ContextAssembler to provide data from various sources (DB, APIs, etc.)
+            learning_topic = context.get("topic_context", topic)
             
-            # Prepare context for prompt
-            prompt_context = self._prepare_prompt_context(persona, topic)
+            # Prepare context for prompt using assembled data
+            prompt_context = self._prepare_prompt_context(context, learning_topic)
             
-            logger.info(f"Generating ToC for topic: {topic}")
+            logger.info(f"Generating ToC for topic: {learning_topic}")
             logger.debug(f"Prompt context prepared with {len(prompt_context)} fields")
             
             # Generate the ToC using LLM
@@ -81,43 +85,85 @@ class InitialResearchNode:
         except Exception as e:
             logger.error(f"Error generating ToC: {e}")
             # Return fallback data structure
-            return self._create_fallback_response(topic)
+            return self._create_fallback_response(learning_topic)
     
-    def _prepare_prompt_context(self, persona: Dict[str, Any], topic: str) -> Dict[str, str]:
-        """Prepare the context dictionary for the prompt template."""
+    def _prepare_prompt_context(self, context: Dict[str, Any], learning_topic: str) -> Dict[str, str]:
+        """
+        Prepare the context dictionary for the prompt template.
         
-        # Extract goal information
-        goal = persona["goals"]["current_goals"][0]
-        learning_style = persona["learning_profile"]["learning_style"]
-        core_expertise = persona["knowledge_foundation"]["core_expertise"]
-        specific_gaps = persona["knowledge_foundation"]["ai_knowledge_state"]["specific_gaps"]
+        UPDATED: Now extracts data from assembled context instead of hardcoded persona.
+        This method is responsible for formatting assembled context data into the specific
+        format required by the PERSONALIZED_TOC_PROMPT template.
         
-        # Build knowledge bridges dynamically from user's expertise
-        knowledge_bridges = self._generate_knowledge_bridges(core_expertise, "AI")
+        Args:
+            context: Assembled context from ContextAssembler
+            learning_topic: The specific topic the user wants to learn
+            
+        Returns:
+            Dictionary formatted for PERSONALIZED_TOC_PROMPT template
+        """
+        # Extract user profile from assembled context
+        user_profile = context.get("user_profile", {})
+        existing_knowledge = context.get("existing_knowledge", [])
         
-        # Format core expertise for display
-        expertise_str = "; ".join(
-            f"{k}: {v['level']} ({v.get('confidence', '?')}/10)" 
-            for k, v in core_expertise.items()
-        )
-        
-        return {
-            "primary_goal": goal["primary_goal"],
-            "specific_outcome": goal["specific_outcome"],
-            "target_timeline": goal["target_timeline"],
-            "success_metrics": ", ".join(goal["success_metrics"]),
-            "explanation_preference": learning_style["explanation_preference"],
-            "example_types": ", ".join(learning_style["example_types"]),
-            "visual_preferences": ", ".join(learning_style["visual_preferences"]),
-            "content_structure": learning_style["content_structure"],
-            "core_expertise": expertise_str,
-            "knowledge_bridges": knowledge_bridges,
-            "specific_gaps": ", ".join(specific_gaps),
-            "rag_existing_books_summary": persona.get("rag_existing_books_summary", "No prior books found on this topic."),
-            "industry_benchmarks": "AI product management curriculum from top universities.",
-            "current_trends": "Emphasis on practical AI evaluation, LLM safety, and real-world case studies.",
-            "expert_recommendations": "Follow learning paths from leading AI PMs and product teams.",
-        }
+        # Try to get detailed persona data first, fallback to mock profile structure
+        if "goals" in user_profile and "learning_profile" in user_profile:
+            # Detailed persona format (from get_hardcoded_sonu_persona)
+            goal = user_profile["goals"]["current_goals"][0]
+            learning_style = user_profile["learning_profile"]["learning_style"]
+            core_expertise = user_profile["knowledge_foundation"]["core_expertise"]
+            specific_gaps = user_profile["knowledge_foundation"]["ai_knowledge_state"]["specific_gaps"]
+            
+            # Build knowledge bridges dynamically from user's expertise
+            knowledge_bridges = self._generate_knowledge_bridges(core_expertise, "AI")
+            
+            # Format core expertise for display
+            expertise_str = "; ".join(
+                f"{k}: {v['level']} ({v.get('confidence', '?')}/10)" 
+                for k, v in core_expertise.items()
+            )
+            
+            return {
+                "learning_topic": learning_topic,  # CRITICAL: Add the learning topic
+                "primary_goal": goal["primary_goal"],
+                "specific_outcome": goal["specific_outcome"],
+                "target_timeline": goal["target_timeline"],
+                "success_metrics": ", ".join(goal["success_metrics"]),
+                "explanation_preference": learning_style["explanation_preference"],
+                "example_types": ", ".join(learning_style["example_types"]),
+                "visual_preferences": ", ".join(learning_style["visual_preferences"]),
+                "content_structure": learning_style["content_structure"],
+                "core_expertise": expertise_str,
+                "knowledge_bridges": knowledge_bridges,
+                "specific_gaps": ", ".join(specific_gaps),
+                "rag_existing_books_summary": user_profile.get("rag_existing_books_summary", 
+                                                            self._summarize_existing_knowledge(existing_knowledge)),
+                "industry_benchmarks": "AI product management curriculum from top universities.",
+                "current_trends": "Emphasis on practical AI evaluation, LLM safety, and real-world case studies.",
+                "expert_recommendations": "Follow learning paths from leading AI PMs and product teams.",
+            }
+        else:
+            # Simple mock profile format - create reasonable defaults
+            learning_style_str = user_profile.get("learning_style", "comprehensive with practical examples")
+            
+            return {
+                "learning_topic": learning_topic,  # CRITICAL: Add the learning topic
+                "primary_goal": f"Learn {learning_topic} effectively",
+                "specific_outcome": f"Gain practical knowledge in {learning_topic}",
+                "target_timeline": "3-6 months",
+                "success_metrics": f"Understand core concepts, Apply {learning_topic} in practice, Build confidence",
+                "explanation_preference": "clear explanations with rich context",
+                "example_types": "real-world applications, practical examples, case studies",
+                "visual_preferences": "diagrams, mindmaps, flowcharts",
+                "content_structure": "start basic, build to comprehensive understanding",
+                "core_expertise": "General knowledge and learning experience",
+                "knowledge_bridges": f"Existing knowledge to {learning_topic}",
+                "specific_gaps": f"Fundamental concepts in {learning_topic}",
+                "rag_existing_books_summary": self._summarize_existing_knowledge(existing_knowledge),
+                "industry_benchmarks": f"Standard curriculum for {learning_topic}.",
+                "current_trends": f"Current best practices and trends in {learning_topic}.",
+                "expert_recommendations": f"Follow learning paths recommended by {learning_topic} experts.",
+            }
     
     def _generate_knowledge_bridges(self, core_expertise: Dict[str, Any], target_domain: str = "AI") -> str:
         """
@@ -141,6 +187,28 @@ class InitialResearchNode:
                 bridges.append(f"{domain_name} to {target_domain}")
         
         return ", ".join(bridges) if bridges else f"General knowledge to {target_domain}"
+    
+    def _summarize_existing_knowledge(self, existing_knowledge: List[Dict[str, Any]]) -> str:
+        """
+        Summarize existing books/knowledge for prompt context.
+        
+        Args:
+            existing_knowledge: List of existing books/resources from assembled context
+            
+        Returns:
+            Formatted summary string for prompt template
+        """
+        if not existing_knowledge:
+            return "No prior books found on this topic."
+        
+        summaries = []
+        for book in existing_knowledge[:3]:  # Limit to top 3 for context window
+            title = book.get("title", "Unknown")
+            topic = book.get("topic", "General")
+            summary = book.get("summary", "No summary available")
+            summaries.append(f"'{title}' (Topic: {topic}) - {summary}")
+        
+        return "; ".join(summaries)
     
     def _parse_and_validate_response(self, raw_response: str) -> PersonalizedBookStructure:
         """
