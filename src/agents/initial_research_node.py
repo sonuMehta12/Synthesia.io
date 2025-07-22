@@ -73,12 +73,9 @@ class InitialResearchNode:
             
             logger.info(f"Successfully generated ToC with {len(book_structure['chapters'])} chapters")
             
-            # Return in the expected format for backward compatibility
+            # Return the new structured format only
             return {
-                "book_structure": book_structure,
-                # Legacy format for gradual migration
-                "toc": [{"title": chapter["title"]} for chapter in book_structure["chapters"]],
-                "summaries": {chapter["title"]: chapter["summary"] for chapter in book_structure["chapters"]}
+                "book_structure": book_structure
             }
             
         except Exception as e:
@@ -95,8 +92,8 @@ class InitialResearchNode:
         core_expertise = persona["knowledge_foundation"]["core_expertise"]
         specific_gaps = persona["knowledge_foundation"]["ai_knowledge_state"]["specific_gaps"]
         
-        # Build knowledge bridges string
-        knowledge_bridges = "Marketing to AI, UX to AI, Frontend Dev to AI"
+        # Build knowledge bridges dynamically from user's expertise
+        knowledge_bridges = self._generate_knowledge_bridges(core_expertise, "AI")
         
         # Format core expertise for display
         expertise_str = "; ".join(
@@ -121,6 +118,29 @@ class InitialResearchNode:
             "current_trends": "Emphasis on practical AI evaluation, LLM safety, and real-world case studies.",
             "expert_recommendations": "Follow learning paths from leading AI PMs and product teams.",
         }
+    
+    def _generate_knowledge_bridges(self, core_expertise: Dict[str, Any], target_domain: str = "AI") -> str:
+        """
+        Generate knowledge bridges dynamically from user's expertise.
+        
+        Args:
+            core_expertise: Dictionary of user's expertise areas
+            target_domain: The domain to bridge to (e.g., "AI", "ML")
+            
+        Returns:
+            Comma-separated string of knowledge bridges
+        """
+        bridges = []
+        
+        for domain, details in core_expertise.items():
+            # Only include domains where user has meaningful experience (confidence >= 6)
+            confidence = details.get("confidence", 0)
+            if confidence >= 6:
+                # Convert snake_case to Title Case
+                domain_name = domain.replace("_", " ").title()
+                bridges.append(f"{domain_name} to {target_domain}")
+        
+        return ", ".join(bridges) if bridges else f"General knowledge to {target_domain}"
     
     def _parse_and_validate_response(self, raw_response: str) -> PersonalizedBookStructure:
         """
@@ -221,7 +241,5 @@ class InitialResearchNode:
         )
         
         return {
-            "book_structure": fallback_structure,
-            "toc": [{"title": chapter["title"]} for chapter in fallback_structure["chapters"]],
-            "summaries": {chapter["title"]: chapter["summary"] for chapter in fallback_structure["chapters"]}
+            "book_structure": fallback_structure
         } 
