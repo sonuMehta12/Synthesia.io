@@ -49,6 +49,23 @@ class GeneratedBook(TypedDict):
     chapters: List[str]
 
 
+class BookChapter(TypedDict):
+    """A chapter in the personalized book."""
+    
+    chapter_number: int
+    title: str
+    summary: str
+    personalization_rationale: str
+
+
+class PersonalizedBookStructure(TypedDict):
+    """The complete structure of a personalized book with ToC."""
+    
+    title: str
+    introduction: str
+    chapters: List[BookChapter]
+
+
 class AgentState(TypedDict):
     """
     Main state for the Learning Agent LangGraph.
@@ -72,12 +89,15 @@ class AgentState(TypedDict):
     current_topic: Optional[str]
     learning_context: Dict[str, Any]
     
-    # New fields for this phase
+    # New structured book data
     context: Optional[Dict[str, Any]]
-    toc: Optional[List[Dict[str, Any]]]
-    summaries: Optional[Dict[str, str]]
+    book_structure: Optional[PersonalizedBookStructure]
     user_feedback: Optional[str]
     book_content: Optional[str]
+    
+    # Legacy fields (deprecated but kept for backward compatibility)
+    toc: Optional[List[Dict[str, Any]]]  # Will be removed after migration
+    summaries: Optional[Dict[str, str]]  # Will be removed after migration
     
     # System metadata
     session_id: Optional[str]

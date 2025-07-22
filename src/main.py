@@ -98,25 +98,68 @@ class LearningAgent:
         context = state.get("context")
         topic = state.get("current_topic")
         result = self.initial_research_node.generate_toc(context, topic)
-        return {**state, "toc": result["toc"], "summaries": result["summaries"]}
+        
+        # Update state with new structured data
+        updated_state = {
+            **state, 
+            "book_structure": result["book_structure"]
+        }
+        
+        # Keep legacy fields for backward compatibility during migration
+        if "toc" in result:
+            updated_state["toc"] = result["toc"]
+        if "summaries" in result:
+            updated_state["summaries"] = result["summaries"]
+            
+        return updated_state
 
     def _user_collab_interface_node(self, state: AgentState) -> AgentState:
-        toc = state.get("toc")
-        summaries = state.get("summaries")
+        book_structure = state.get("book_structure")
         user_profile = state.get("user_profile")
-        feedback_result = self.user_collab_interface.present_and_collect_feedback(toc, summaries, user_profile)
-        return {
-            **state,
-            "toc": feedback_result["updated_toc"],
-            "summaries": feedback_result["updated_summaries"],
-            "user_feedback": feedback_result["user_feedback"],
-        }
+        
+        # Handle both new and legacy formats
+        if book_structure:
+            # Use new structure
+            feedback_result = self.user_collab_interface.present_and_collect_feedback(
+                book_structure, user_profile
+            )
+            return {
+                **state,
+                "book_structure": feedback_result["updated_book_structure"],
+                "user_feedback": feedback_result["user_feedback"],
+                # Legacy compatibility
+                "toc": feedback_result.get("updated_toc", []),
+                "summaries": feedback_result.get("updated_summaries", {}),
+            }
+        else:
+            # Fallback to legacy format
+            toc = state.get("toc", [])
+            summaries = state.get("summaries", {})
+            feedback_result = self.user_collab_interface.present_and_collect_feedback_legacy(
+                toc, summaries, user_profile
+            )
+            return {
+                **state,
+                "book_structure": feedback_result.get("updated_book_structure"),
+                "toc": feedback_result["updated_toc"],
+                "summaries": feedback_result["updated_summaries"],
+                "user_feedback": feedback_result["user_feedback"],
+            }
 
     def _dummy_deep_research_node(self, state: AgentState) -> AgentState:
-        toc = state.get("toc")
-        summaries = state.get("summaries")
+        book_structure = state.get("book_structure")
         context = state.get("context")
-        result = self.dummy_deep_research_node.generate_content(toc, summaries, context)
+        
+        # Handle both new and legacy formats
+        if book_structure:
+            # Use new structure
+            result = self.dummy_deep_research_node.generate_content(book_structure, context)
+        else:
+            # Fallback to legacy format
+            toc = state.get("toc", [])
+            summaries = state.get("summaries", {})
+            result = self.dummy_deep_research_node.generate_content_legacy(toc, summaries, context)
+            
         return {**state, "book_content": result["book_content"]}
     
     def process_user_input(self, user_input: str, config: Dict[str, Any] = None) -> Dict[str, Any]:
@@ -143,10 +186,12 @@ class LearningAgent:
                 "session_id": None,
                 "timestamp": None,
                 "context": None,
-                "toc": None,
-                "summaries": None,
+                "book_structure": None,
                 "user_feedback": None,
                 "book_content": None,
+                # Legacy fields for backward compatibility
+                "toc": None,
+                "summaries": None,
             }
             
             # Execute the graph
@@ -163,10 +208,12 @@ class LearningAgent:
                 "topic": result.get("current_topic"),
                 "session_id": result.get("session_id"),
                 "timestamp": result.get("timestamp"),
-                "toc": result.get("toc"),
-                "summaries": result.get("summaries"),
+                "book_structure": result.get("book_structure"),
                 "user_feedback": result.get("user_feedback"),
                 "book_content": result.get("book_content"),
+                # Legacy fields for backward compatibility
+                "toc": result.get("toc"),
+                "summaries": result.get("summaries"),
                 "full_state": result,
             }
             

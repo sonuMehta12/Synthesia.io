@@ -70,7 +70,33 @@ This is not a generic book outline. This is a learning blueprint engineered spec
 
 Generate a single, valid JSON object following this exact schema:
 
-<...JSON schema omitted for brevity, see full template in user message...>
+{{
+  "title": "<A compelling, personalized book title that reflects the user's goal and learning style>",
+  "introduction": "<A short paragraph (2-3 sentences) explaining how this specific book is tailored for the user, referencing their goal, background, and why this approach will accelerate their learning journey>",
+  "chapters": [
+    {{
+      "chapter_number": 1,
+      "title": "<Chapter 1 Title>",
+      "summary": "<A summary explaining what this chapter covers AND why it's important for this specific user's journey>",
+      "personalization_rationale": "<Explain in one sentence how this chapter connects to the user's goal, background, or knowledge gaps>"
+    }},
+    {{
+      "chapter_number": 2,
+      "title": "<Chapter 2 Title>",
+      "summary": "<A summary explaining what this chapter covers AND why it's important for this specific user's journey>",
+      "personalization_rationale": "<Explain in one sentence how this chapter connects to the user's goal, background, or knowledge gaps>"
+    }}
+    // Continue for 6-12 chapters based on topic complexity and user timeline
+  ]
+}}
+
+**CRITICAL REQUIREMENTS:**
+- Return ONLY valid JSON, no markdown formatting or extra text
+- Each chapter must have personalization_rationale that directly references the user's profile
+- Title must be compelling and specific to this user's journey
+- Introduction must reference specific elements from their profile
+- Chapter progression must respect their learning style and timeline
+- All text must be actionable and immediately relevant to their goal
 
 ---
 
