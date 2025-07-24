@@ -18,7 +18,7 @@ class UserCollabInterface:
     
     def __init__(self):
         """Initialize the User Collaboration Interface."""
-        logger.info("UserCollabInterface initialized successfully")
+        # Silent initialization
     
     def present_and_collect_feedback(
         self,
@@ -36,8 +36,7 @@ class UserCollabInterface:
             Dictionary with feedback results and updated book structure
         """
         try:
-            logger.info(f"Presenting book structure: '{book_structure['title']}'")
-            logger.info(f"Book has {len(book_structure['chapters'])} chapters")
+                    # Silent book structure presentation
             
             # TODO: Implement actual user interface for feedback collection
             # For now, simulate user approval with minor improvements
@@ -48,7 +47,7 @@ class UserCollabInterface:
             # Simulate user feedback: approve as-is with minor suggestions
             simulated_feedback = self._generate_simulated_feedback(book_structure, user_profile)
             
-            logger.info("User feedback collected successfully")
+            # Silent feedback collection
             
             return {
                 "approved": True,

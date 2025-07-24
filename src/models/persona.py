@@ -1,229 +1,133 @@
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional
 from pydantic import BaseModel, Field
-from typing_extensions import TypedDict
+from datetime import datetime
 
-# --- TypedDict for compatibility with existing state ---
-class UserPersonaDict(TypedDict, total=False):
-    user_id: str
-    created_at: str
-    last_updated: str
-    learning_profile: Dict[str, Any]
-    goals: Dict[str, Any]
-    expertise_profile: Dict[str, Any]
-    learning_history: Dict[str, Any]
-    knowledge_bridges: Dict[str, Any]
-    current_context: Dict[str, Any]
-    personalization_data: Dict[str, Any]
+# --- Core Models ---
 
-# --- Pydantic Model for validation and IDE support ---
-class LearningStyle(BaseModel):
-    explanation_preference: str
-    example_types: List[str]
-    visual_preferences: List[str]
-    content_structure: str
+class LearningPreferences(BaseModel):
+    preferences: List[str] = Field(
+        description="List of learning preferences like 'simple explanation', 'real world analogy', 'mermaid diagram'"
+    )
 
-class LearningProfile(BaseModel):
-    learning_style: LearningStyle
-    # Add more fields as needed
-
-class Goal(BaseModel):
+class SMARTGoal(BaseModel):
     goal_id: str
-    primary_goal: str
-    specific_outcome: str
-    target_timeline: str
-    priority: str
-    success_metrics: List[str]
+    specific: str           # What exactly do you want to achieve?
+    measurable: List[str]   # How will you measure progress/success?
+    achievable: str         # Is this goal realistic?
+    relevant: str          # Why is this goal important?
+    time_bound: str        # When will you achieve this?
+    priority: str          # "high", "medium", "low"
 
-class Goals(BaseModel):
-    current_goals: List[Goal]
-    goal_hierarchy: Dict[str, Any]
+class SkillLevel(BaseModel):
+    domain: str            # e.g., "Python Programming", "Digital Marketing"
+    level: str            # "beginner", "intermediate", "advanced"
+    confidence: int       # 1-10 scale
 
-class ExpertiseDomain(BaseModel):
-    level: str
-    years_experience: Optional[int]
-    confidence: int
-    last_assessed: str
-    key_areas: Optional[List[str]] = None
-    technologies: Optional[List[str]] = None
-    methodologies: Optional[List[str]] = None
-    tools: Optional[List[str]] = None
-    areas: Optional[List[str]] = None
-    note: Optional[str] = None
-
-class CoreExpertise(BaseModel):
-    marketing: Optional[ExpertiseDomain]
-    frontend_development: Optional[ExpertiseDomain]
-    ux_research: Optional[ExpertiseDomain]
-    ux_design: Optional[ExpertiseDomain]
-    product_management: Optional[ExpertiseDomain]
-
-class AIKnowledgeState(BaseModel):
-    current_level: str
-    specific_gaps: List[str]
-    adjacent_strengths: List[str]
-
-class KnowledgeFoundation(BaseModel):
-    core_expertise: CoreExpertise
-    ai_knowledge_state: AIKnowledgeState
-
-class BookCompleted(BaseModel):
+class CompletedBook(BaseModel):
+    book_id: str
     title: str
     topic: str
     completion_date: str
-    rating: int
-    key_takeaways: List[str]
-    application_success: str
+    rating: Optional[int] = Field(None, description="1-5 star rating")
+    key_takeaways: List[str] = []
 
-class LearningPatterns(BaseModel):
-    preferred_chapter_length: str
-    completion_rate: int
-    peak_learning_times: List[str]
-    struggle_indicators: List[str]
-    acceleration_factors: List[str]
-
-class LearningHistory(BaseModel):
-    books_completed: List[BookCompleted]
-    learning_patterns: LearningPatterns
+# --- Main User Persona ---
 
 class UserPersona(BaseModel):
     user_id: str
     created_at: str
     last_updated: str
-    learning_profile: LearningProfile
-    goals: Goals
-    knowledge_foundation: KnowledgeFoundation
-    learning_history: LearningHistory
-    # Add more fields as needed
+    
+    # Core learning setup
+    learning_preferences: LearningPreferences
+    goals: List[SMARTGoal]
+    expertise: List[SkillLevel]
+    
+    # Knowledge tracking
+    knowledge_gaps: List[str]  # Gaps between current state and goals
+    completed_books: List[CompletedBook]
+    summary: str  # What user has studied through the app - for RAG/context
 
-# --- Hardcoded example for Sonu ---
-def get_hardcoded_sonu_persona() -> UserPersonaDict:
-    return {
-        "user_id": "sonu_12",
-        "created_at": "2024-10-15",
-        "last_updated": "2025-01-15",
-        "learning_profile": {
-            "learning_style": {
-                "explanation_preference": "simple explanations with rich context",
-                "example_types": ["real-world applications", "case studies", "analogies"],
-                "visual_preferences": ["mermaid diagrams", "mindmaps", "flowcharts"],
-                "content_structure": "start basic, build to complete understanding",
-            },
-        },
-        "goals": {
-            "current_goals": [
-                {
-                    "goal_id": "pm_transition_2025",
-                    "primary_goal": "become an AI product manager",
-                    "specific_outcome": "get AI product manager entry level job",
-                    "target_timeline": "6 months",
-                    "priority": "high",
-                    "success_metrics": [
-                        "Land interviews at AI companies",
-                        "Demonstrate AI product knowledge in interviews",
-                        "Understand AI evaluation frameworks"
-                    ],
-                }
-            ],
-            "goal_hierarchy": {
-                "ultimate_goal": "AI Product Manager Career",
-                "intermediate_goals": [
-                    "Understand AI/ML fundamentals",
-                    "Learn AI product evaluation methods",
-                    "Build AI product portfolio",
-                    "Network in AI product community"
+# --- Example for Sonu ---
+
+def get_sonu_persona() -> UserPersona:
+    return UserPersona(
+        user_id="sonu_12",
+        created_at="2024-10-15",
+        last_updated="2025-01-15",
+        
+        learning_preferences=LearningPreferences(
+            preferences=[
+                "simple explanation",
+                "real world analogy", 
+                "mermaid diagram",
+                "depth explanation",
+                "case studies",
+                "step-by-step guides"
+            ]
+        ),
+        
+        goals=[
+            SMARTGoal(
+                goal_id="ai_pm_transition_2025",
+                specific="Become an AI Product Manager at a tech company",
+                measurable=[
+                    "Land 5+ AI PM interviews",
+                    "Get 2+ job offers",
+                    "Demonstrate AI product knowledge in interviews"
                 ],
-                "immediate_goals": [
-                    "Learn AI evaluation frameworks",
-                    "Understand LLM product development"
+                achievable="Yes, with my UX and technical background",
+                relevant="AI is the future, and I want to shape AI products",
+                time_bound="6 months (by July 2025)",
+                priority="high"
+            )
+        ],
+        
+        expertise=[
+            SkillLevel(domain="Digital Marketing", level="intermediate", confidence=8),
+            SkillLevel(domain="React.js Development", level="intermediate", confidence=7),
+            SkillLevel(domain="UX Research", level="intermediate", confidence=8),
+            SkillLevel(domain="UX Design", level="beginner", confidence=6),
+            SkillLevel(domain="Product Management", level="beginner", confidence=5),
+            SkillLevel(domain="AI/ML", level="beginner", confidence=2)
+        ],
+        
+        knowledge_gaps=[
+            "AI/ML fundamentals and terminology",
+            "LLM capabilities and limitations", 
+            "AI product evaluation frameworks",
+            "AI ethics and safety considerations",
+            "AI product metrics and KPIs",
+            "Prompt engineering best practices",
+            "AI model evaluation techniques"
+        ],
+        
+        completed_books=[
+            CompletedBook(
+                book_id="inspired_cagan_001",
+                title="Inspired - Marty Cagan",
+                topic="Product Management",
+                completion_date="2024-09-01",
+                rating=5,
+                key_takeaways=[
+                    "Product discovery techniques",
+                    "Outcome-based roadmaps",
+                    "Customer problem validation"
                 ]
-            },
-        },
-        "knowledge_foundation": {
-            "core_expertise": {
-                "marketing": {
-                    "level": "intermediate",
-                    "years_experience": 3,
-                    "key_areas": ["digital marketing", "growth hacking", "customer acquisition"],
-                    "confidence": 8,
-                    "last_assessed": "2024-12-01"
-                },
-                "frontend_development": {
-                    "level": "intermediate",
-                    "technologies": ["React.js", "JavaScript", "CSS"],
-                    "years_experience": 2,
-                    "confidence": 7,
-                    "last_assessed": "2024-11-15"
-                },
-                "ux_research": {
-                    "level": "intermediate",
-                    "methodologies": ["user interviews", "usability testing", "surveys"],
-                    "confidence": 8,
-                    "last_assessed": "2024-10-30"
-                },
-                "ux_design": {
-                    "level": "beginner_to_intermediate",
-                    "tools": ["Figma", "Adobe XD"],
-                    "confidence": 6,
-                    "last_assessed": "2024-09-20"
-                },
-                "product_management": {
-                    "level": "beginner",
-                    "areas": ["roadmap planning", "stakeholder management"],
-                    "confidence": 5,
-                    "last_assessed": "2024-08-15",
-                    "note": "Traditional PM, no AI experience yet"
-                }
-            },
-            "ai_knowledge_state": {
-                "current_level": "complete_beginner",
-                "specific_gaps": [
-                    "AI/ML fundamentals",
-                    "LLM capabilities and limitations",
-                    "AI product evaluation methods",
-                    "AI ethics and safety",
-                    "AI product metrics and KPIs"
-                ],
-                "adjacent_strengths": [
-                    "User research skills (can evaluate AI UX)",
-                    "Technical background (can understand AI concepts)",
-                    "Marketing knowledge (can position AI products)"
+            ),
+            CompletedBook(
+                book_id="dont_make_think_001", 
+                title="Don't Make Me Think - Steve Krug",
+                topic="UX Design",
+                completion_date="2024-07-15",
+                rating=5,
+                key_takeaways=[
+                    "Usability principles",
+                    "User-centered design",
+                    "Simple navigation design"
                 ]
-            }
-        },
-        "learning_history": {
-            "books_completed": [
-                {
-                    "title": "Inspired - Marty Cagan",
-                    "topic": "product_management",
-                    "completion_date": "2024-09-01",
-                    "rating": 5,
-                    "key_takeaways": ["product discovery", "outcome-based roadmaps"],
-                    "application_success": "high"
-                },
-                {
-                    "title": "Don't Make Me Think - Steve Krug",
-                    "topic": "ux_design",
-                    "completion_date": "2024-07-15",
-                    "rating": 5,
-                    "key_takeaways": ["usability principles", "user-centered design"],
-                    "application_success": "high"
-                }
-            ],
-            "learning_patterns": {
-                "preferred_chapter_length": "15-25 pages",
-                "completion_rate": 85,
-                "peak_learning_times": ["morning", "early_evening"],
-                "struggle_indicators": [
-                    "Stops reading when too many new concepts introduced at once",
-                    "Needs practical examples within first 3 pages of theory"
-                ],
-                "acceleration_factors": [
-                    "Real company case studies",
-                    "Step-by-step implementation guides",
-                    "Visual frameworks and diagrams"
-                ]
-            }
-        },
-        # Simulated RAG summary for 'ai_evaluations'
-        "rag_existing_books_summary": "User has completed introductory readings on product management and UX, but has not yet studied AI evaluation frameworks. They are familiar with evaluation concepts from A/B testing and usability studies, which can serve as analogies."
-    } 
+            )
+        ],
+        
+        summary="Sonu has completed foundational readings in product management (Inspired by Marty Cagan) and UX design (Don't Make Me Think). He understands product discovery, outcome-based roadmaps, and usability principles. Currently learning AI fundamentals to transition into AI Product Management. Has strong UX research background that can be leveraged for AI product evaluation. No prior AI/ML study through the platform yet."
+    )

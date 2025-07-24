@@ -18,7 +18,7 @@ class DummyDeepResearchNode:
     
     def __init__(self):
         """Initialize the Dummy Deep Research Node."""
-        logger.info("DummyDeepResearchNode initialized successfully")
+        # Silent initialization
     
     def generate_content(
         self,
@@ -36,12 +36,12 @@ class DummyDeepResearchNode:
             Dictionary containing the generated book content
         """
         try:
-            logger.info(f"Generating content for book: '{book_structure['title']}'")
+            # Silent content generation
             
             # Generate structured markdown content
             book_content = self._generate_markdown_content(book_structure)
             
-            logger.info(f"Generated book content with {len(book_structure['chapters'])} chapters")
+            # Silent content generation success
             
             return {
                 "book_content": book_content,

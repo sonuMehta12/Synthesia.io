@@ -90,7 +90,8 @@ class AgentState(TypedDict):
     learning_context: Dict[str, Any]
     
     # New structured book data
-    context: Optional[Dict[str, Any]]
+    context: Optional[Dict[str, Any]]  # Assembled context data (serializable)
+    execution_plan: Optional[Dict[str, Any]]  # Strategic plan from Strategic Planner
     book_structure: Optional[PersonalizedBookStructure]
     user_feedback: Optional[str]
     book_content: Optional[str]

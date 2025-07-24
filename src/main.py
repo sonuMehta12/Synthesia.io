@@ -22,11 +22,19 @@ from .agents.initial_research_node import InitialResearchNode
 from .agents.user_collab_interface import UserCollabInterface
 from .agents.dummy_deep_research_node import DummyDeepResearchNode
 
-# Configure logging
+# Configure minimal logging - ONLY planner output
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.WARNING,  # Suppress most logs
+    format='%(message)s'     # Clean format without timestamps/module names
 )
+
+# Disable noisy third-party loggers
+logging.getLogger("httpx").setLevel(logging.CRITICAL)
+logging.getLogger("openai").setLevel(logging.CRITICAL)
+logging.getLogger("langchain").setLevel(logging.CRITICAL)
+logging.getLogger("langchain_core").setLevel(logging.CRITICAL)
+logging.getLogger("langchain_openai").setLevel(logging.CRITICAL)
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,8 +55,6 @@ class LearningAgent:
         self.user_collab_interface = UserCollabInterface()
         self.dummy_deep_research_node = DummyDeepResearchNode()
         self.graph = self._build_graph()
-        
-        logger.info("Learning Agent initialized successfully")
     
     def _build_graph(self) -> StateGraph:
         """
@@ -81,36 +87,56 @@ class LearningAgent:
         memory = MemorySaver()
         graph = builder.compile(checkpointer=memory)
         
-        logger.info("LangGraph workflow built successfully")
         return graph
 
     def _context_assembler_node(self, state: AgentState) -> AgentState:
-        # Use mock data for now
+        # Assemble context using the ContextAssembler
         context = self.context_assembler.assemble_context(
             user_profile=state.get("user_profile"),
             intent_result=state.get("current_intent"),
             existing_books=None,  # Use mock inside assembler
             user_resources=None,  # Use mock inside assembler
         )
-        return {**state, "context": context}
+        # Store only the assembled context (serializable), not the assembler instance
+        return {
+            **state, 
+            "context": context
+            # Note: context_assembler instance is NOT stored in state to avoid serialization issues
+        }
 
     def _initial_research_node(self, state: AgentState) -> AgentState:
-        context = state.get("context")
-        topic = state.get("current_topic")
-        result = self.initial_research_node.generate_toc(context, topic)
+        # Recreate ContextAssembler and populate it with the assembled context
+        # This avoids storing the assembler instance in state (which causes serialization issues)
+        context_assembler = ContextAssembler()
+        assembled_context = state.get("context")
         
-        # Update state with new structured data
+        if not assembled_context:
+            logger.error("Assembled context not found in state. Check workflow configuration.")
+            return {**state, "error": "Assembled context not available"}
+        
+        # Populate the assembler with the pre-assembled context data
+        context_assembler.raw_context = assembled_context
+        
+        # PHASE 1: Strategic Planning - Analyze context and create execution plan
+        planning_result = self.initial_research_node.planner_agent(context_assembler)
+        execution_plan = planning_result["execution_plan"]
+        
+        # PHASE 2: Knowledge Synthesis - Generate ToC using execution plan guidance
+        synthesis_result = self.initial_research_node.generate_toc(context_assembler, execution_plan)
+        
+        # Update state with execution plan and book structure
         updated_state = {
             **state, 
-            "book_structure": result["book_structure"]
+            "execution_plan": execution_plan,
+            "book_structure": synthesis_result["book_structure"]
         }
         
         # Keep legacy fields for backward compatibility during migration
-        if "toc" in result:
-            updated_state["toc"] = result["toc"]
-        if "summaries" in result:
-            updated_state["summaries"] = result["summaries"]
-            
+        if "toc" in synthesis_result:
+            updated_state["toc"] = synthesis_result["toc"]
+        if "summaries" in synthesis_result:
+            updated_state["summaries"] = synthesis_result["summaries"]
+        
         return updated_state
 
     def _user_collab_interface_node(self, state: AgentState) -> AgentState:
@@ -185,7 +211,8 @@ class LearningAgent:
                 "learning_context": {},
                 "session_id": None,
                 "timestamp": None,
-                "context": None,
+                "context": None,  # Will be populated by context_assembler_node
+                "execution_plan": None,  # Will be populated by strategic_planner in initial_research_node
                 "book_structure": None,
                 "user_feedback": None,
                 "book_content": None,
@@ -200,7 +227,7 @@ class LearningAgent:
             
             result = self.graph.invoke(initial_state, config)
             
-            logger.info(f"User input processed successfully: {user_input[:50]}...")
+            # Silent processing success
             return {
                 "success": True,
                 "input": user_input,
@@ -208,6 +235,7 @@ class LearningAgent:
                 "topic": result.get("current_topic"),
                 "session_id": result.get("session_id"),
                 "timestamp": result.get("timestamp"),
+                "execution_plan": result.get("execution_plan"),  # Strategic plan from planner_agent
                 "book_structure": result.get("book_structure"),
                 "user_feedback": result.get("user_feedback"),
                 "book_content": result.get("book_content"),

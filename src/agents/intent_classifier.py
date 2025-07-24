@@ -51,7 +51,7 @@ class IntentClassifier:
         self.confidence_chain = self._create_confidence_chain()
         self.topic_chain = self._create_topic_chain()
         
-        logger.info(f"Intent Classifier initialized with model: {self.config['model_name']}")
+        # Silent initialization
     
     def _initialize_llm(self) -> ChatOpenAI:
         """
@@ -105,7 +105,7 @@ class IntentClassifier:
             IntentClassification with intent type, confidence, and metadata.
         """
         try:
-            logger.info(f"Classifying intent for input: {user_input[:100]}...")
+            # Silent intent classification
             
             # Step 1: Classify the intent
             intent_str = self.classification_chain.invoke(user_input)
@@ -140,7 +140,7 @@ class IntentClassifier:
                 }
             )
             
-            logger.info(f"Intent classified as {intent_type} with confidence {confidence}")
+            # Silent intent classification result
             return result
             
         except Exception as e:
@@ -255,7 +255,7 @@ class IntentClassifier:
             if classification.get("topic"):
                 updated_state["current_topic"] = classification["topic"]
             
-            logger.info(f"State updated with intent classification: {classification['intent']}")
+            # Silent state update
             return updated_state
             
         except Exception as e:

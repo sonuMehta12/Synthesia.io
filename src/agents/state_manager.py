@@ -38,7 +38,6 @@ class StateManager:
     def __init__(self):
         """Initialize the State Manager."""
         self.logger = logging.getLogger(__name__)
-        self.logger.info("State Manager initialized")
     
     def load_user_context(self, user_id: str) -> UserProfile:
         """
@@ -76,7 +75,7 @@ class StateManager:
             status="pending",
         )
         
-        self.logger.info(f"New book request created: {request_id} for topic: {topic}")
+        # Silent request creation
         return request
     
     def update_profile(self, user_id: str, updates: Dict[str, Any]) -> UserProfile:
@@ -97,7 +96,7 @@ class StateManager:
         updated_profile["updated_at"] = datetime.now().isoformat()
         
         # TODO: Save to database
-        self.logger.info(f"Profile updated for user {user_id}")
+        # Silent profile update
         
         return UserProfile(**updated_profile)
     
@@ -119,7 +118,7 @@ class StateManager:
             user_profile = state.get("user_profile")
             if not user_profile:
                 user_profile = MOCK_USER_PROFILE.copy()
-                self.logger.info("Using mock user profile.")
+                # Silent mock profile usage
             user_id = user_profile.get("user_id", "user_123")
             
             # Create book request if intent is available
@@ -140,7 +139,7 @@ class StateManager:
                     intent=current_intent["intent"],
                     topic=current_topic
                 )
-                self.logger.info(f"Created book request for intent: {current_intent['intent']}")
+                # Silent book request creation
             else:
                 new_request = current_request
             
@@ -152,7 +151,6 @@ class StateManager:
                 "timestamp": datetime.now().isoformat(),
             }
             
-            self.logger.info("State management completed successfully")
             return updated_state
             
         except Exception as e:
