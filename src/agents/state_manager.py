@@ -10,21 +10,13 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 import uuid
 
-from ..models.state import AgentState, UserProfile, BookRequest, GeneratedBook
+from ..models.state import AgentState, BookRequest, GeneratedBook
+from ..models.persona import UserPersona, get_sonu_persona
 from ..models.intents import IntentType
 from ..utils.config import config
 
 logger = logging.getLogger(__name__)
 
-# Mock data for simulation (should match ContextAssembler)
-MOCK_USER_PROFILE = {
-    "user_id": "user_123",
-    "name": "Alice",
-    "learning_style": "visual",
-    "content_preferences": {"format": "markdown", "depth": "comprehensive"},
-    "created_at": "2024-01-01T00:00:00",
-    "updated_at": "2024-01-01T00:00:00",
-}
 
 class StateManager:
     """
@@ -39,7 +31,7 @@ class StateManager:
         """Initialize the State Manager."""
         self.logger = logging.getLogger(__name__)
     
-    def load_user_context(self, user_id: str) -> UserProfile:
+    def load_user_context(self, user_id: str) -> UserPersona:
         """
         Load user profile and context.
         
@@ -47,10 +39,10 @@ class StateManager:
             user_id: Unique identifier for the user.
             
         Returns:
-            UserProfile with user information and preferences.
+            UserPersona with rich user information and learning preferences.
         """
-        # For now, return mock profile
-        return MOCK_USER_PROFILE.copy()
+        # Return the rich persona instead of simple mock
+        return get_sonu_persona()
     
     def create_book_request(self, user_id: str, user_query: str, intent: IntentType, topic: Optional[str] = None) -> BookRequest:
         """
@@ -78,7 +70,7 @@ class StateManager:
         # Silent request creation
         return request
     
-    def update_profile(self, user_id: str, updates: Dict[str, Any]) -> UserProfile:
+    def update_profile(self, user_id: str, updates: Dict[str, Any]) -> UserPersona:
         """
         Update user profile with new information.
         
@@ -87,18 +79,16 @@ class StateManager:
             updates: Dictionary of profile updates.
             
         Returns:
-            Updated UserProfile.
+            Updated UserPersona.
         """
         current_profile = self.load_user_context(user_id)
         
-        # Apply updates
-        updated_profile = {**current_profile, **updates}
-        updated_profile["updated_at"] = datetime.now().isoformat()
+        # TODO: Implement proper UserPersona updates with validation
+        # For now, return the base persona (since it's a Pydantic model, not a dict)
+        # In future, implement proper persona updating logic
         
-        # TODO: Save to database
         # Silent profile update
-        
-        return UserProfile(**updated_profile)
+        return current_profile
     
     def manage_state(self, state: AgentState) -> AgentState:
         """
@@ -114,12 +104,12 @@ class StateManager:
             Updated agent state with user context and book request info.
         """
         try:
-            # Use mock user profile if not present
+            # Use rich persona instead of simple mock
             user_profile = state.get("user_profile")
             if not user_profile:
-                user_profile = MOCK_USER_PROFILE.copy()
-                # Silent mock profile usage
-            user_id = user_profile.get("user_id", "user_123")
+                user_profile = get_sonu_persona()
+                # Silent rich persona usage
+            user_id = user_profile.user_id
             
             # Create book request if intent is available
             current_request = state.get("current_request")

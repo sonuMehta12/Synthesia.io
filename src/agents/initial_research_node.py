@@ -133,13 +133,27 @@ class InitialResearchNode:
             # Output the execution plan (always visible)
             print("📋 STRATEGIC EXECUTION PLAN GENERATED:")
             print(f"   Plan ID: {execution_plan['plan_id']}")
-            print(f"   User Strengths: {execution_plan['user_analysis'].get('learning_strengths', 'N/A')}")
-            print(f"   Critical Gaps: {execution_plan['user_analysis'].get('critical_gaps', 'N/A')}")
-            print(f"   Topic Complexity: {execution_plan['topic_analysis'].get('complexity_level', 'N/A')}")
-            print(f"   Quality Threshold: {execution_plan['synthesis_strategy'].get('quality_threshold', 'N/A')}")
             
-            activated_agents = [agent for agent, config in execution_plan["agent_activation"].items() if config.get("activated", False)]
+            # Extract info from array structure for display
+            agent_plans = execution_plan.get("agent_plans", [])
+            activated_agents = []
+            total_tasks = 0
+            critical_tasks = 0
+            
+            for agent_plan in agent_plans:
+                agent_name = agent_plan.get("child_agent_name", "unknown")
+                is_activated = agent_plan.get("activation", False)
+                research_plan = agent_plan.get("research_plan", [])
+                
+                if is_activated:
+                    activated_agents.append(agent_name)
+                    total_tasks += len(research_plan)
+                    critical_tasks += len([task for task in research_plan if task.get("task_priority") == "critical"])
+            
             print(f"   Activated Agents: {', '.join(activated_agents)}")
+            print(f"   Total Tasks: {total_tasks}")
+            print(f"   Critical Tasks: {critical_tasks}")
+            print(f"   Learning Topic: {learning_topic}")
             print()  # Empty line for readability
             
             return {
@@ -218,70 +232,150 @@ class InitialResearchNode:
         """
         Parse and validate the Strategic Planner LLM response into structured execution plan.
         
+        Template outputs array structure:
+        [
+          {
+            "child_agent_name": "knowledge_synthesizer",
+            "activation": boolean,
+            "research_plan": [
+              {
+                "task_name": "...",
+                "task_status": "pending", 
+                "task_priority": "critical|high|medium|low",
+                "expected_outcome": "...",
+                "user_resource_connection": "..."
+              }
+            ]
+          },
+          {
+            "child_agent_name": "intelligence_gatherer",
+            "activation": boolean,
+            "research_plan": [...]
+          }
+        ]
+        
         Args:
             raw_response: Raw string response from Strategic Planner LLM
             
         Returns:
-            Validated execution plan dictionary with required fields
+            Validated execution plan dictionary conforming to template structure
             
         Raises:
             ValueError: If response cannot be parsed or fails validation
         """
         try:
-            # Clean the response (remove markdown formatting)
+            # Enhanced JSON cleaning - handle various formatting issues
             cleaned_response = raw_response.strip()
+            
+            # Remove common markdown formatting
             if cleaned_response.startswith("```json"):
                 cleaned_response = cleaned_response[7:]
+            if cleaned_response.startswith("```"):
+                cleaned_response = cleaned_response[3:]
             if cleaned_response.endswith("```"):
                 cleaned_response = cleaned_response[:-3]
+            
+            # Remove extra whitespace and newlines at start/end
             cleaned_response = cleaned_response.strip()
             
-            # Parse JSON
-            execution_plan = json.loads(cleaned_response)
+            # Try to find JSON array bounds if response has extra text
+            start_bracket = cleaned_response.find('[')
+            end_bracket = cleaned_response.rfind(']')
             
-            # Validate required top-level fields
-            required_fields = [
-                "plan_id", "user_analysis", "topic_analysis", 
-                "agent_activation", "synthesis_strategy", "success_criteria"
-            ]
-            for field in required_fields:
-                if field not in execution_plan:
-                    raise ValueError(f"Missing required field in execution plan: {field}")
+            if start_bracket != -1 and end_bracket != -1 and start_bracket < end_bracket:
+                # Extract just the JSON array part
+                cleaned_response = cleaned_response[start_bracket:end_bracket + 1]
             
-            # Validate agent_activation structure
-            agent_activation = execution_plan["agent_activation"]
-            if "knowledge_synthesizer" not in agent_activation:
-                raise ValueError("knowledge_synthesizer must be present in agent_activation")
+            # Additional cleaning - remove any leading/trailing non-JSON text
+            cleaned_response = cleaned_response.strip()
             
-            # Validate knowledge_synthesizer is always activated
-            if not agent_activation["knowledge_synthesizer"].get("activated", False):
-                raise ValueError("knowledge_synthesizer must always be activated")
+            # Log the cleaned response for debugging
+            print(f"🔍 Parsing Strategic Plan JSON (length: {len(cleaned_response)} chars)")
+            if len(cleaned_response) < 200:
+                print(f"🔍 JSON Preview: {cleaned_response[:100]}...")
             
-            # Validate synthesis_strategy has required fields
-            synthesis_strategy = execution_plan["synthesis_strategy"]
-            required_synthesis_fields = ["integration_approach", "personalization_depth", "quality_threshold"]
-            for field in required_synthesis_fields:
-                if field not in synthesis_strategy:
-                    raise ValueError(f"Missing required field in synthesis_strategy: {field}")
+            # Parse JSON - expecting array structure from template
+            agent_plans = json.loads(cleaned_response)
             
-            # Validate quality threshold is reasonable
-            quality_threshold = synthesis_strategy.get("quality_threshold", 0)
-            if not isinstance(quality_threshold, (int, float)) or quality_threshold < 50 or quality_threshold > 100:
-                raise ValueError("quality_threshold must be a number between 50 and 100")
+            # Validate it's an array
+            if not isinstance(agent_plans, list):
+                raise ValueError("Strategic planner must return array of agent plans")
+            
+            # Validate each agent plan
+            knowledge_synthesizer_found = False
+            for agent_plan in agent_plans:
+                # Validate required fields for each agent
+                required_fields = ["child_agent_name", "activation", "research_plan"]
+                for field in required_fields:
+                    if field not in agent_plan:
+                        raise ValueError(f"Missing required field in agent plan: {field}")
+                
+                # Check if knowledge_synthesizer is present and activated
+                if agent_plan["child_agent_name"] == "knowledge_synthesizer":
+                    knowledge_synthesizer_found = True
+                    if not agent_plan.get("activation", False):
+                        raise ValueError("knowledge_synthesizer must always be activated")
+                
+                # Validate research_plan structure
+                research_plan = agent_plan["research_plan"]
+                if not isinstance(research_plan, list):
+                    raise ValueError("research_plan must be a list")
+                
+                # Validate each task in research plan
+                for task in research_plan:
+                    required_task_fields = ["task_name", "task_status", "task_priority", "expected_outcome", "user_resource_connection"]
+                    for field in required_task_fields:
+                        if field not in task:
+                            raise ValueError(f"Missing required field in task: {field}")
+                    
+                    # Validate task_priority values
+                    if task["task_priority"] not in ["critical", "high", "medium", "low"]:
+                        raise ValueError(f"Invalid task_priority: {task['task_priority']}")
+            
+            # Ensure knowledge_synthesizer is present
+            if not knowledge_synthesizer_found:
+                raise ValueError("knowledge_synthesizer must be present in agent plans")
+            
+            # Convert array to structured format for internal use
+            execution_plan = {
+                "plan_id": f"plan_{uuid.uuid4().hex[:8]}",
+                "agent_plans": agent_plans,  # Store original array structure
+                "created_at": datetime.now().isoformat()
+            }
+            
+            print(f"✅ Strategic Plan Parsed Successfully: {len(agent_plans)} agents")
             
             return execution_plan
             
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON from Strategic Planner: {e}")
+            logger.error(f"Raw response (first 500 chars): {raw_response[:500]}")
             raise ValueError(f"Invalid JSON response from Strategic Planner LLM: {e}")
         
         except Exception as e:
             logger.error(f"Execution plan validation failed: {e}")
+            logger.error(f"Raw response (first 500 chars): {raw_response[:500]}")
             raise ValueError(f"Execution plan validation failed: {e}")
     
     def _apply_execution_plan_guidance(self, execution_plan: Dict[str, Any]) -> str:
         """
         Convert execution plan into strategic guidance for Knowledge Synthesizer prompt.
+        
+        Extracts guidance from the array structure returned by strategic planner template:
+        [
+          {
+            "child_agent_name": "knowledge_synthesizer",
+            "activation": boolean,
+            "research_plan": [
+              {
+                "task_name": "...",
+                "task_priority": "critical|high|medium|low",
+                "expected_outcome": "...",
+                "user_resource_connection": "..."
+              }
+            ]
+          }
+        ]
         
         Args:
             execution_plan: Validated execution plan from Strategic Planner
@@ -291,46 +385,81 @@ class InitialResearchNode:
         """
         guidance_parts = []
         
-        # Extract key strategic insights
-        user_analysis = execution_plan.get("user_analysis", {})
-        topic_analysis = execution_plan.get("topic_analysis", {})
-        agent_activation = execution_plan.get("agent_activation", {})
-        synthesis_strategy = execution_plan.get("synthesis_strategy", {})
+        # Extract agent plans from execution plan
+        agent_plans = execution_plan.get("agent_plans", [])
         
-        # Strategic focus areas from planner
-        knowledge_task = agent_activation.get("knowledge_synthesizer", {})
-        focus_areas = knowledge_task.get("focus_areas", [])
+        # Find knowledge synthesizer plan
+        knowledge_synthesizer_plan = None
+        for agent_plan in agent_plans:
+            if agent_plan.get("child_agent_name") == "knowledge_synthesizer":
+                knowledge_synthesizer_plan = agent_plan
+                break
+        
+        if not knowledge_synthesizer_plan:
+            return "**STRATEGIC GUIDANCE**: Use general comprehensive approach for ToC generation"
+        
+        # Extract strategic insights from research plan
+        research_plan = knowledge_synthesizer_plan.get("research_plan", [])
+        
+        # Group tasks by priority
+        critical_tasks = []
+        high_priority_tasks = []
+        focus_areas = []
+        
+        for task in research_plan:
+            task_name = task.get("task_name", "")
+            task_priority = task.get("task_priority", "medium")
+            expected_outcome = task.get("expected_outcome", "")
+            user_connection = task.get("user_resource_connection", "")
+            
+            # Collect focus areas from task names
+            if "fundamental" in task_name.lower() or "basic" in task_name.lower():
+                focus_areas.append("fundamentals")
+            if "practical" in task_name.lower() or "application" in task_name.lower():
+                focus_areas.append("practical_applications")
+            if "advanced" in task_name.lower() or "expert" in task_name.lower():
+                focus_areas.append("advanced_concepts")
+            
+            # Group by priority
+            if task_priority == "critical":
+                critical_tasks.append(f"{task_name}: {expected_outcome}")
+            elif task_priority == "high":
+                high_priority_tasks.append(f"{task_name}: {expected_outcome}")
+        
+        # Build strategic guidance
+        if critical_tasks:
+            guidance_parts.append(f"**CRITICAL PRIORITIES**: {'; '.join(critical_tasks)}")
+        
+        if high_priority_tasks:
+            guidance_parts.append(f"**HIGH PRIORITY TASKS**: {'; '.join(high_priority_tasks)}")
+        
         if focus_areas:
-            guidance_parts.append(f"**STRATEGIC FOCUS AREAS**: {', '.join(focus_areas)}")
+            unique_focus_areas = list(set(focus_areas))
+            guidance_parts.append(f"**STRATEGIC FOCUS AREAS**: {', '.join(unique_focus_areas)}")
         
-        # User learning strengths to leverage
-        learning_strengths = user_analysis.get("learning_strengths", "")
-        if learning_strengths:
-            guidance_parts.append(f"**LEVERAGE USER STRENGTHS**: {learning_strengths}")
+        # Extract user resource connections
+        user_connections = [task.get("user_resource_connection", "") for task in research_plan if task.get("user_resource_connection")]
+        if user_connections:
+            guidance_parts.append(f"**USER RESOURCE INTEGRATION**: {'; '.join(user_connections[:2])}")  # Limit to first 2
         
-        # Critical gaps to address
-        critical_gaps = user_analysis.get("critical_gaps", "")
-        if critical_gaps:
-            guidance_parts.append(f"**ADDRESS CRITICAL GAPS**: {critical_gaps}")
+        # Add quality guidance based on task complexity
+        task_count = len(research_plan)
+        if task_count >= 5:
+            guidance_parts.append("**QUALITY STANDARD**: Comprehensive coverage - ensure deep personalization")
+        elif task_count >= 3:
+            guidance_parts.append("**QUALITY STANDARD**: Balanced approach - focus on core concepts with personalization")
+        else:
+            guidance_parts.append("**QUALITY STANDARD**: Focused approach - prioritize essential concepts")
         
-        # Quality and personalization requirements
-        quality_threshold = synthesis_strategy.get("quality_threshold", 75)
-        personalization_depth = synthesis_strategy.get("personalization_depth", "moderate")
-        guidance_parts.append(f"**QUALITY STANDARD**: Achieve {quality_threshold}% quality threshold")
-        guidance_parts.append(f"**PERSONALIZATION DEPTH**: {personalization_depth}")
-        
-        # Topic complexity considerations
-        complexity_level = topic_analysis.get("complexity_level", "intermediate")
-        guidance_parts.append(f"**TOPIC COMPLEXITY**: {complexity_level} - adjust depth accordingly")
-        
-        return "\n".join(guidance_parts)
+        return "\n".join(guidance_parts) if guidance_parts else "**STRATEGIC GUIDANCE**: Apply general comprehensive ToC generation approach"
     
     def _create_fallback_execution_plan(self, learning_topic: str) -> Dict[str, Any]:
         """
         Create a fallback execution plan when Strategic Planner fails.
         
         This ensures the workflow can continue even if strategic planning fails,
-        using reasonable defaults based on the learning topic.
+        using reasonable defaults based on the learning topic. Returns array structure
+        matching the strategic planner template.
         
         Args:
             learning_topic: The topic for which to create fallback plan
@@ -341,45 +470,54 @@ class InitialResearchNode:
         print("⚠️  FALLBACK EXECUTION PLAN - Strategic planning failed")
         print()
         
+        # Create fallback array structure matching template
+        fallback_agent_plans = [
+            {
+                "child_agent_name": "knowledge_synthesizer",
+                "activation": True,
+                "research_plan": [
+                    {
+                        "task_name": f"Generate comprehensive personalized ToC for {learning_topic}",
+                        "task_status": "pending",
+                        "task_priority": "critical",
+                        "expected_outcome": f"Complete table of contents covering {learning_topic} fundamentals and applications",
+                        "user_resource_connection": "Build foundation that complements any existing user knowledge"
+                    },
+                    {
+                        "task_name": f"Identify prerequisite concepts for {learning_topic}",
+                        "task_status": "pending", 
+                        "task_priority": "high",
+                        "expected_outcome": f"Clear understanding of what knowledge is needed before learning {learning_topic}",
+                        "user_resource_connection": "Ensure learning path builds on user's current expertise level"
+                    },
+                    {
+                        "task_name": f"Create practical application roadmap for {learning_topic}",
+                        "task_status": "pending",
+                        "task_priority": "medium",
+                        "expected_outcome": f"Actionable projects and exercises for applying {learning_topic} knowledge",
+                        "user_resource_connection": "Connect theoretical concepts to user's practical goals"
+                    }
+                ]
+            },
+            {
+                "child_agent_name": "intelligence_gatherer",
+                "activation": False,
+                "research_plan": [
+                    {
+                        "task_name": "No intelligence gathering needed for fallback plan",
+                        "task_status": "pending",
+                        "task_priority": "low", 
+                        "expected_outcome": "Intelligence gatherer not activated in fallback mode",
+                        "user_resource_connection": "Fallback relies on existing knowledge synthesis only"
+                    }
+                ]
+            }
+        ]
+        
         fallback_plan = {
             "plan_id": f"fallback_{uuid.uuid4().hex[:8]}",
-            "user_analysis": {
-                "learning_strengths": "General knowledge and learning experience",
-                "critical_gaps": f"Fundamental concepts in {learning_topic}",
-                "learning_style_match": "Comprehensive approach with practical examples",
-                "timeline_pressure": "Moderate - standard learning timeline"
-            },
-            "topic_analysis": {
-                "complexity_level": "intermediate",
-                "topic_maturity": "established",
-                "current_research_needed": False,
-                "practical_urgency": "moderate"
-            },
-            "agent_activation": {
-                "knowledge_synthesizer": {
-                    "activated": True,
-                    "primary_task": f"Generate comprehensive personalized ToC for {learning_topic}",
-                    "focus_areas": ["fundamentals", "practical_applications", "skill_building"],
-                    "company_db_priority": "medium"
-                },
-                "intelligence_gatherer": {
-                    "activated": False,
-                    "primary_task": "Not activated for fallback plan",
-                    "research_focus": [],
-                    "time_range": "all_time"
-                }
-            },
-            "synthesis_strategy": {
-                "integration_approach": "Single agent output - no synthesis needed",
-                "user_resource_priority": "medium",
-                "personalization_depth": "moderate",
-                "quality_threshold": 75
-            },
-            "success_criteria": {
-                "primary_metrics": ["topic_coverage", "personalization_quality"],
-                "quality_standards": ["clear_structure", "actionable_content"],
-                "timeline_checkpoints": ["initial_generation", "user_feedback"]
-            }
+            "agent_plans": fallback_agent_plans,
+            "created_at": datetime.now().isoformat()
         }
         
         return {

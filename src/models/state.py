@@ -12,17 +12,7 @@ from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 
 from .intents import IntentClassification, IntentType
-
-
-class UserProfile(TypedDict):
-    """User profile information for book creation preferences."""
-    
-    user_id: str
-    name: Optional[str]
-    learning_style: str  # "visual", "practical", "theoretical", "comprehensive"
-    content_preferences: Dict[str, Any]  # Format, depth, style preferences
-    created_at: str
-    updated_at: str
+from .persona import UserPersona
 
 
 class BookRequest(TypedDict):
@@ -77,8 +67,8 @@ class AgentState(TypedDict):
     # Messages for conversation flow (LangGraph standard)
     messages: Annotated[List[AnyMessage], add_messages]
     
-    # User and book information
-    user_profile: Optional[UserProfile]
+    # User and book information - NOW USING RICH PERSONA SCHEMA
+    user_profile: Optional[UserPersona]
     current_request: Optional[BookRequest]
     generated_book: Optional[GeneratedBook]
     

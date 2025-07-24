@@ -61,7 +61,6 @@ def get_sonu_persona() -> UserPersona:
                 "simple explanation",
                 "real world analogy", 
                 "mermaid diagram",
-                "depth explanation",
                 "case studies",
                 "step-by-step guides"
             ]

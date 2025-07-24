@@ -14,6 +14,7 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 
 from .models.state import AgentState
+from .models.persona import get_sonu_persona
 from .agents.intent_classifier import IntentClassifier
 from .agents.state_manager import StateManager
 from .utils.config import config
@@ -203,7 +204,7 @@ class LearningAgent:
             # Prepare initial state
             initial_state = {
                 "messages": [HumanMessage(content=user_input)],
-                "user_profile": None,
+                "user_profile": get_sonu_persona(),
                 "current_request": None,
                 "generated_book": None,
                 "current_intent": None,

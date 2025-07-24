@@ -5,7 +5,8 @@ This node works with the new PersonalizedBookStructure format.
 import logging
 from typing import Dict, Any, List
 
-from ..models.state import UserProfile, PersonalizedBookStructure
+from ..models.persona import UserPersona
+from ..models.state import PersonalizedBookStructure
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +24,14 @@ class UserCollabInterface:
     def present_and_collect_feedback(
         self,
         book_structure: PersonalizedBookStructure,
-        user_profile: UserProfile
+        user_profile: UserPersona
     ) -> Dict[str, Any]:
         """
         Present book structure and collect a single round of feedback.
         
         Args:
             book_structure: The generated book structure with title, intro, and chapters
-            user_profile: User profile for personalized feedback collection
+            user_profile: Rich UserPersona for personalized feedback collection
             
         Returns:
             Dictionary with feedback results and updated book structure
@@ -87,12 +88,15 @@ class UserCollabInterface:
     def _generate_simulated_feedback(
         self, 
         book_structure: PersonalizedBookStructure, 
-        user_profile: UserProfile
+        user_profile: UserPersona
     ) -> str:
         """Generate simulated user feedback based on the book structure."""
         
         chapter_count = len(book_structure['chapters'])
-        learning_style = user_profile.get('learning_style', 'comprehensive') if user_profile else 'comprehensive'
+        
+        # Access UserPersona attributes correctly (not .get() since it's a Pydantic model)
+        learning_preferences = user_profile.learning_preferences.preferences if user_profile else []
+        learning_style_str = ", ".join(learning_preferences) if learning_preferences else "comprehensive"
         
         # Generate contextual feedback based on structure
         feedback_parts = []
@@ -106,11 +110,14 @@ class UserCollabInterface:
         else:
             feedback_parts.append("The chapter structure looks well-balanced.")
         
-        # Add learning style specific feedback
-        if 'visual' in learning_style.lower():
-            feedback_parts.append("Please ensure each chapter includes diagrams and visual aids.")
-        elif 'practical' in learning_style.lower():
-            feedback_parts.append("Make sure to include hands-on exercises in each chapter.")
+        # Add learning style specific feedback based on preferences
+        for preference in learning_preferences:
+            if 'diagram' in preference.lower() or 'mermaid' in preference.lower():
+                feedback_parts.append("Please ensure each chapter includes diagrams and visual aids.")
+                break
+            elif 'practical' in preference.lower() or 'example' in preference.lower():
+                feedback_parts.append("Make sure to include hands-on exercises and real-world examples in each chapter.")
+                break
         
         feedback_parts.append("Overall, this structure aligns well with my learning goals!")
         
@@ -121,7 +128,7 @@ class UserCollabInterface:
         self,
         toc: List[Dict[str, Any]],
         summaries: Dict[str, str],
-        user_profile: UserProfile
+        user_profile: UserPersona
     ) -> Dict[str, Any]:
         """Legacy method for backward compatibility during migration."""
         logger.warning("Using legacy feedback collection method")
