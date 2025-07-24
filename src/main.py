@@ -75,14 +75,17 @@ class LearningAgent:
         builder.add_node("user_collab_interface", self._user_collab_interface_node)
         builder.add_node("dummy_deep_research_node", self._dummy_deep_research_node)
         
-        # Define the workflow edges
+        # Define the workflow edges - MODIFIED TO STOP AFTER STRATEGIC PLANNING
         builder.add_edge(START, "state_manager")
         builder.add_edge("state_manager", "intent_classifier")
         builder.add_edge("intent_classifier", "context_assembler")
         builder.add_edge("context_assembler", "initial_research_node")
-        builder.add_edge("initial_research_node", "user_collab_interface")
-        builder.add_edge("user_collab_interface", "dummy_deep_research_node")
-        builder.add_edge("dummy_deep_research_node", END)
+        builder.add_edge("initial_research_node", END)  # STOP HERE - Skip ToC generation
+        
+        # DISABLED FOR TESTING - Skip these nodes to focus on strategic planning
+        # builder.add_edge("initial_research_node", "user_collab_interface")
+        # builder.add_edge("user_collab_interface", "dummy_deep_research_node")
+        # builder.add_edge("dummy_deep_research_node", END)
         
         # Compile the graph with memory saver for state persistence
         memory = MemorySaver()
@@ -118,25 +121,53 @@ class LearningAgent:
         # Populate the assembler with the pre-assembled context data
         context_assembler.raw_context = assembled_context
         
-        # PHASE 1: Strategic Planning - Analyze context and create execution plan
+        # PHASE 1: Strategic Planning ONLY - Skip ToC generation for testing
+        print("🎯 STRATEGIC PLANNING ONLY MODE - Skipping ToC generation")
         planning_result = self.initial_research_node.planner_agent(context_assembler)
         execution_plan = planning_result["execution_plan"]
         
-        # PHASE 2: Knowledge Synthesis - Generate ToC using execution plan guidance
-        synthesis_result = self.initial_research_node.generate_toc(context_assembler, execution_plan)
+        print("\n" + "="*80)
+        print("📋 DETAILED STRATEGIC RESEARCH PLAN")
+        print("="*80)
         
-        # Update state with execution plan and book structure
+        # Display detailed research plan
+        agent_plans = execution_plan.get("agent_plans", [])
+        for agent_plan in agent_plans:
+            agent_name = agent_plan.get("child_agent_name", "unknown")
+            is_activated = agent_plan.get("activation", False)
+            research_plan = agent_plan.get("research_plan", [])
+            
+            print(f"\n🤖 AGENT: {agent_name.upper()}")
+            print(f"   Status: {'✅ ACTIVATED' if is_activated else '❌ DEACTIVATED'}")
+            print(f"   Tasks: {len(research_plan)}")
+            
+            if is_activated and research_plan:
+                for i, task in enumerate(research_plan, 1):
+                    priority = task.get("task_priority", "medium")
+                    task_name = task.get("task_name", "Unknown task")
+                    expected_outcome = task.get("expected_outcome", "No outcome specified")
+                    user_connection = task.get("user_resource_connection", "No user connection")
+                    
+                    priority_icon = {"critical": "🔥", "high": "⚡", "medium": "📋", "low": "📝"}.get(priority, "📋")
+                    
+                    print(f"\n   {priority_icon} TASK {i}: {task_name}")
+                    print(f"      Priority: {priority.upper()}")
+                    print(f"      Expected Outcome: {expected_outcome}")
+                    print(f"      User Connection: {user_connection}")
+        
+        print("\n" + "="*80)
+        print("🎯 Strategic planning complete - ToC generation skipped for testing")
+        print("="*80)
+        
+        # PHASE 2: Knowledge Synthesis - DISABLED FOR TESTING
+        # synthesis_result = self.initial_research_node.generate_toc(context_assembler, execution_plan)
+        
+        # Update state with execution plan only
         updated_state = {
             **state, 
             "execution_plan": execution_plan,
-            "book_structure": synthesis_result["book_structure"]
+            # "book_structure": synthesis_result["book_structure"]  # DISABLED
         }
-        
-        # Keep legacy fields for backward compatibility during migration
-        if "toc" in synthesis_result:
-            updated_state["toc"] = synthesis_result["toc"]
-        if "summaries" in synthesis_result:
-            updated_state["summaries"] = synthesis_result["summaries"]
         
         return updated_state
 
@@ -280,34 +311,28 @@ def main():
     # Initialize the learning agent
     agent = LearningAgent()
     
-    # Example usage
-    print("🎓 Learning Agent - Intent Classification Demo")
-    print("=" * 50)
+    # Example usage - SINGLE TEST CASE to focus on strategic planning with user resources
+    print("🎓 Learning Agent - Strategic Planning with User Resources Demo")
+    print("=" * 70)
     
-    # Test cases
-    test_inputs = [
-        "I want to learn Python programming",
-        "Add this information about machine learning to my knowledge base",
-        "Generate a summary of my learning progress",
-        "Update my learning preferences to focus on practical projects",
-    ]
+    # Single focused test case that will show user resource integration
+    test_input = "I want to master AI Product Management and land interviews at top tech companies"
     
-    for i, test_input in enumerate(test_inputs, 1):
-        print(f"\n🧪 Test {i}: {test_input}")
-        print("-" * 40)
-        
-        result = agent.process_user_input(test_input)
-        
-        if result["success"]:
-            intent = result["intent"]
-            print(f"✅ Intent: {intent['intent']}")
-            print(f"📊 Confidence: {intent['confidence']:.2f}")
-            if intent.get("topic"):
-                print(f"🎯 Topic: {intent['topic']}")
-            if result.get("session_id"):
-                print(f"🆔 Session: {result['session_id']}")
-        else:
-            print(f"❌ Error: {result['error']}")
+    print(f"\n🧪 Testing: {test_input}")
+    print("-" * 70)
+    
+    result = agent.process_user_input(test_input)
+    
+    if result["success"]:
+        intent = result["intent"]
+        print(f"\n✅ Intent: {intent['intent']}")
+        print(f"📊 Confidence: {intent['confidence']:.2f}")
+        if intent.get("topic"):
+            print(f"🎯 Topic: {intent['topic']}")
+        if result.get("session_id"):
+            print(f"🆔 Session: {result['session_id']}")
+    else:
+        print(f"❌ Error: {result['error']}")
     
     print(f"\n📋 Agent Info:")
     agent_info = agent.get_agent_info()

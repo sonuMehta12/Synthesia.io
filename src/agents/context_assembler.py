@@ -19,12 +19,38 @@ from ..models.persona import UserPersona, get_sonu_persona
 from ..prompts.strategic_planner import STRATEGIC_PLANNING_PROMPT
 from ..prompts.initial_research import PERSONALIZED_TOC_PROMPT
 
-# Mock data for simulation
+# Mock data for simulation - Updated with Sonu's existing AI knowledge
 MOCK_BOOK_SUMMARIES = [
     {"title": "Intro to AI", "topic": "AI", "summary": "A beginner's guide to AI."},
     {"title": "AI evals", "topic": "AI evals", "summary": "Overview of evaluation methods in AI."},
 ]
-MOCK_USER_RESOURCES = []
+
+MOCK_USER_RESOURCES = [
+    {
+        "title": "Personal AI/ML Learning Notes",
+        "type": "learning_notes",
+        "content": "Comprehensive notes covering AI/ML basics, including supervised vs unsupervised learning, neural networks fundamentals, and common algorithms like decision trees and linear regression.",
+        "summary": "Sonu has solid foundational knowledge of AI/ML concepts and terminology through self-study and practical exploration."
+    },
+    {
+        "title": "LangChain Experimentation Projects", 
+        "type": "hands_on_projects",
+        "content": "Multiple small projects using LangChain for building conversational AI applications, including document Q&A systems and simple chatbots using OpenAI and Anthropic APIs.",
+        "summary": "Practical experience with LangChain framework for building AI applications, demonstrating hands-on familiarity with modern AI development tools."
+    },
+    {
+        "title": "Prompt Engineering Practice Collection",
+        "type": "practice_work", 
+        "content": "Collection of prompt engineering experiments with various LLM APIs (OpenAI GPT-4, Claude, Gemini), including few-shot learning, chain-of-thought prompting, and role-based prompts for different use cases.",
+        "summary": "Strong practical understanding of prompt engineering techniques and experience with multiple LLM APIs for different applications."
+    },
+    {
+        "title": "AI Product Research Notes",
+        "type": "research_compilation",
+        "content": "Research compilation on successful AI products like ChatGPT, GitHub Copilot, and Notion AI, analyzing their product strategies, user adoption patterns, and market positioning from a product management perspective.",
+        "summary": "Shows Sonu's product management mindset applied to AI products, demonstrating strategic thinking about AI in business contexts."
+    }
+]
 
 class ContextAssembler:
     """
